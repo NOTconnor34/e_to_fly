@@ -1,0 +1,77 @@
+--// CONFIGURATION \\--
+local TOGGLE_KEY      = Enum.KeyCode.E
+local WIND_SOUND      = true
+local FLY_FORCE       = 120
+
+local plrChar    = script.Parent
+local humanoid   = plrChar:FindFirstChild("Humanoid") or plrChar:WaitForChild("Humanoid")
+local root       = humanoid.Parent:WaitForChild("HumanoidRootPart")
+local camera     = workspace.CurrentCamera
+local userInput  = game:GetService("UserInputService")
+local runService = game:GetService("RunService")
+local tween      = game:GetService("TweenService")
+
+local bv = script:WaitForChild("BodyVelocity"):Clone()
+local bg = script:WaitForChild("BodyGyro"):Clone()
+local flyState = script:WaitForChild("Flymoving")
+
+local snd = Instance.new("Sound")
+snd.Name = "WindSound"
+snd.SoundId = "rbxassetid://3308152153"
+snd.Volume = WIND_SOUND and 1 or 0
+snd.Parent = root
+
+local isFlying = false
+
+local function movementDirection()
+	if humanoid.MoveDirection.Magnitude == 0 then return Vector3.zero end
+	local lookDir = Vector3.new(camera.CFrame.LookVector.X, 0, camera.CFrame.LookVector.Z)
+	local projected = CFrame.new(camera.CFrame.Position, camera.CFrame.Position + lookDir):VectorToObjectSpace(humanoid.MoveDirection)
+	local worldVec = (camera.CFrame * CFrame.new(projected)).Position - camera.CFrame.Position
+	return worldVec.Magnitude > 0 and worldVec.Unit or Vector3.zero
+end
+
+local function toggleStates(enable)
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, enable)
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, enable)
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, enable)
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, enable)
+end
+
+runService.RenderStepped:Connect(function()
+	if isFlying then
+		humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+		bg.CFrame = camera.CFrame
+		local dir = movementDirection()
+		flyState.Value = dir ~= Vector3.zero
+		tween:Create(bv, TweenInfo.new(0.25), {Velocity = dir * FLY_FORCE}):Play()
+	end
+end)
+
+flyState.Changed:Connect(function(active)
+	if active then
+		tween:Create(camera, TweenInfo.new(0.5), {FieldOfView = 100}):Play()
+		snd:Play()
+	else
+		tween:Create(camera, TweenInfo.new(0.5), {FieldOfView = 70}):Play()
+		snd:Stop()
+	end
+end)
+
+userInput.InputBegan:Connect(function(input, processed)
+	if processed or input.KeyCode ~= TOGGLE_KEY then return end
+	if not isFlying then
+		isFlying = true
+		toggleStates(false)
+		root.Running.Volume = 0
+		humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+		bv.Parent, bg.Parent = root, root
+	else
+		isFlying = false
+		flyState.Value = false
+		toggleStates(true)
+		root.Running.Volume = 0.65
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		bv.Parent, bg.Parent = plrChar, plrChar
+	end
+end)
