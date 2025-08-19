@@ -1,1 +1,1 @@
-if you read this you read this if you is read if you read is
+Bascally just a script that lets you fly when clicked keyboard key "E" it could be upper case or anything else just when you clicked e it would make you fly! Also it has wind effects you can turn them off and also it has this cool fov effect when flying like free cam whatever its called.
